@@ -47,6 +47,92 @@ As the FitBit data has the limitations listed above, an additional data source w
 
 For a more throuogh look at the data see the [Data Dictionary and Documentation](https://github.com/CoolBeansProgramming/Bellabeat-Case-Study/blob/main/Data%20Documentation%20and%20Data%20Dictionary.md) file.
 
+# Process
+## Choosing Data Files
+As `dailyActivity_merged.csv`  provides a good summary of steps and calories burned and the `sleepDay_merged.csv` file provides sleep data these are good overall files to use to analyze participant usage. As fitness devices are generally used to track overall health and weight, the file weightLogInfo_merged containing weight data will also be used.
+
+## Applications
+Excel will be used to load and take an initial pass for issues, R to transform and explore the data, and Tableau to interactively visuallize the data.
+
+## Initial Pass Through
+1. Make sure there are no blank entries in the data by using filters.
+2. Convert Id field to text data type as no numerical equations are needed for this field.
+3. Convert ActivityDate from Datetime to Date types as no times are given in the data.
+4. In the `dailyActivity_merged.csv`  file, there are many instances where TotalSteps is zero and SedentaryMinutes is 1440; the number of calories burned vary between users. This is most likely due to the weight and height of the user. There are a few instances where the sedentary minutes is 1440 but the calories burned is 0.
+5. In the `weightLogInfo_merged` file, there are only two entries for the Fat field so this will not be used to draw insights.
+
+## Transform and Explore
+All R code can be found [here](https://github.com/CoolBeansProgramming/Bellabeat-Case-Study/blob/main/BellaBeat_RScript.R).
+1. Load the tidyverse package and data files
+2. Check to see if the data has been loaded correctly
+3. Convert the Id field to character data type
+4. Rename ActivityDate, SleepDay, and Date to convert to date data type
+
+`activity <-activity %>%
+  mutate_at(vars(Id), as.character) %>%
+  mutate_at(vars(ActivityDate), as.Date, format = "%m/%d/%y") %>%
+  rename("Day"="ActivityDate")`
+
+5. Combine data frames using left and right joins
+6. Add day of the week variable
+
+`combined_data <-sleep %>%
+  right_join(activity, by=c("Id","Day")) %>%
+  left_join(weight, by=c("Id", "Day")) %>%
+  mutate(Weekday = weekdays(as.Date(Day, "m/%d/%Y")))`
+
+7. Filter and remove duplicate rows; count NAs and distinct entries using Id
+
+`combined_data <-combined_data[!duplicated(combined_data), ]
+sum(is.na(combined_data))
+n_distinct(combined_data$Id)
+n_distinct(sleep$Id)
+n_distinct(weight$Id)`
+
+The final data frame has 940 variables with 25 variables. There are 33 distinct Id entries total. The number of distinct users in dailyActivity, sleepDay, and weightLogInfo are 33, 24, and 8, respectively. There are 6893 NAs in the combined data. This is not surprising as there is only weight data from eight users and not all users logged sleep information.
+
+# Analyze
+## Select summary statistics and visualizations
+`combined_data %>%
+select(TotalMinutesAsleep, TotalSteps, TotalDistance, VeryActiveMinutes, FairlyActiveMinutes, LightlyActiveMinutes, SedentaryMinutes, Calories, WeightKg, Fat, BMI, IsManualReport) %>%
+summary()`
+
+<img width="610" alt="Code" data-magnify-src="https://github.com/Shihab27/Bellabeat_Business_Case_Study/assets/65851806/4c8fb13a-d2f8-4feb-a85a-fa1962e7356e">
+
+The average user weighs 72.04 kg, has a BMI of 25.19, and spent the most time doing light activities. On average, they also slept 6.9 hours, took 7638 steps, and traveled 5.49 km per day.
+
+<img width="608" alt="gg" src="https://github.com/Shihab27/Bellabeat_Business_Case_Study/assets/65851806/527f77dc-9670-4cb3-a6b1-92cf1c299ca3">
+
+Users took the most steps on Sundays and the least number of steps on Fridays. As all the values are fairly high, the marketing team can conclude that users value the step feature of health fitness devices. They could also assume that the feature will be very useful for Bellabeat customers.
+
+
+<img width="608" alt="gg" src="https://github.com/Shihab27/Bellabeat_Business_Case_Study/assets/65851806/d228973b-1c44-479d-9584-0b0ee5695cfd">
+
+It is interesting to see that the amount of time spent being fairly active decreased on Wednesdays and then picks back up on Thursdays. This may be due to the fact that most people are going back to work on Monday and then may get discouraged or tired by Wednesday. Wednesday may also be a popular rest day, allowing them to resume their activities on Thursday.
+
+<img width="611" alt="gg" src="https://github.com/Shihab27/Bellabeat_Business_Case_Study/assets/65851806/f55da4d2-d4f5-4636-b405-8b2f6d3e29c5">
+
+From the above histogram, most people slept between 312 and 563 minutes (between 5.2 and 9.4 hours). Note that this does not include the total time spent in bed resting.
+
+<img width="607" alt="gg" src="https://github.com/Shihab27/Bellabeat_Business_Case_Study/assets/65851806/940af17b-6b1a-44fe-94a9-bae7fccbc7ba">
+
+Besides a few outliers, calories were burned by those who slept between 5 and 7 hours. If only considering weight loss and calories burned, this aligns with the 5.2 to 9.4 hour sleep range, which may indicate that those who stay withint this range burn more calories.
+
+<img width="612" alt="gg" src="https://github.com/Shihab27/Bellabeat_Business_Case_Study/assets/65851806/f8ed4eb8-1b2a-4fb8-b9bb-46963d0fd125">
+
+The logged feature was not used too often as there were many blanks in the data and no records were available for Thursday and Friday. The highest days of logged distance were on the weekend or times when many people likely have free time to do physical activities.
+
+## Share
+Check out the daashboard on Tableau Public: [Bellabeat Dashboard](https://public.tableau.com/app/profile/paijetableau/viz/BellaBeatCaseStudy_16610415560350/Dashboard?publish=yes)
+
+## Act
+- The number of steps users took was the least on Friday which may be due to user becoming tired at the end of the week. As this is not limited to only FitBit customers, the marketing team could send notifications to users Thursday evenings and Friday and Saturday mornings encouraging users to continue being physical active throughout the day.
+
+- Many users did not use the Logged Distance feature on the FitBit devices. This suggests that users would prefer to have their data collected automatically. The Bellabeat marketing team can decide not to a feature activity distance log function as many users seem to not use this.
+
+- Compared to the data set size, there were very few entries for weight. Of those that were entered, about 2/3 were done manually. The individuals who did not log their weight may not have been concerned with losing weight or did not have the device needed to automatically record this data. Since many did not use the logged distance feature as well, the Bellabeat team could market weight devices like smart scales that automatically record this information.
+
+- Other data sources, like the [Mi Band fitness tracker data (04.2016 - present)](https://www.kaggle.com/datasets/damirgadylyaev/more-than-4-years-of-steps-and-sleep-data-mi-band), could be useful for further exploration as this specific data set follows on individual over the course of six years.
 
 
 
